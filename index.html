@@ -393,15 +393,15 @@
             <form id="contactForm">
                 <div class="mb-4">
                     <label for="modalName" class="block text-sm font-medium text-gray-300 mb-1">Name:</label>
-                    <input type="text" id="modalName" name="modalName" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                    <input type="text" id="modalName" name="name" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
                 </div>
                 <div class="mb-4">
                     <label for="modalEmail" class="block text-sm font-medium text-gray-300 mb-1">E-Mail:</label>
-                    <input type="email" id="modalEmail" name="modalEmail" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                    <input type="email" id="modalEmail" name="email" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
                 </div>
                 <div class="mb-6">
                     <label for="modalPhone" class="block text-sm font-medium text-gray-300 mb-1">Telefon (optional):</label>
-                    <input type="tel" id="modalPhone" name="modalPhone" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <input type="tel" id="modalPhone" name="phone" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                 </div>
                 <div class="flex justify-end space-x-4">
                     <button type="button" onclick="hideContactModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Abbrechen</button>
@@ -677,7 +677,6 @@
             const geschaetzteGesetzlicheRente = nettoeinkommen * 0.25; 
             const versorgungsluecke = nettoeinkommen - geschaetzteGesetzlicheRente - privateBuRente;
             
-            // Update detailed financial gap display
             document.getElementById('lueckeNettoeinkommen').textContent = `€ ${nettoeinkommen.toFixed(2).replace('.', ',')}`;
             document.getElementById('lueckeGesetzlicheRente').textContent = `- € ${geschaetzteGesetzlicheRente.toFixed(2).replace('.', ',')}`;
             document.getElementById('lueckePrivateBu').textContent = `- € ${privateBuRente.toFixed(2).replace('.', ',')}`;
@@ -701,6 +700,54 @@
             }
         }
         
+        document.getElementById('contactForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Verhindert das Standard-Absenden des Formulars
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sende...';
+
+            // Deine Formspree Endpoint URL
+            const formspreeEndpoint = "https://formspree.io/f/mwpogaan"; 
+
+            fetch(formspreeEndpoint, {
+                method: "POST",
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+
+                if (response.ok) {
+                    return response.json(); 
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.error || "Unbekannter Fehler beim Senden.");
+                    }).catch(jsonError => {
+                        throw new Error(`Server-Fehler: ${response.status} ${response.statusText}`);
+                    });
+                }
+            })
+            .then(data => { 
+                console.log("Formspree success data:", data);
+                const name = formData.get('name') || "Gast";
+                hideContactModal();
+                form.reset(); 
+                customAlert(`Vielen Dank, ${name}! Ihre Anfrage wurde gesendet. Ihr Vermögensberater wird sich bei Ihnen melden.`);
+            })
+            .catch(error => {
+                console.error("Fehler beim Senden des Formulars:", error);
+                customAlert(`Entschuldigung, beim Senden des Formulars ist ein Fehler aufgetreten: ${error.message}`);
+            });
+        });
+        
         function restartCheck() {
             document.getElementById('buForm').reset();
             document.getElementById('bu_rente_input_container').classList.add('hidden');
@@ -721,14 +768,6 @@
             document.getElementById('contactModal').classList.add('hidden');
             document.getElementById('contactForm').reset(); 
         }
-
-        document.getElementById('contactForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const name = document.getElementById('modalName').value;
-            hideContactModal();
-            customAlert(`Vielen Dank, ${name}! Ihre Anfrage wurde gesendet. Ihr Vermögensberater wird sich bei Ihnen melden.`);
-        });
-
 
         // Initialize
         document.getElementById('step1').classList.add('active');
