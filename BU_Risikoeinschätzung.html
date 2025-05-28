@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BU-Risiko Kurz-Check</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        /* Custom progress bar styles */
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 9999px;
+            height: 10px;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #3b82f6; /* blue-500 */
+            border-radius: 9999px;
+            transition: width 0.3s ease-in-out;
+        }
+        /* Custom radio/checkbox styles for better visual appeal */
+        .custom-radio input[type="radio"],
+        .custom-checkbox input[type="checkbox"] {
+            opacity: 0;
+            position: fixed;
+            width: 0;
+        }
+        .custom-radio label,
+        .custom-checkbox label {
+            display: inline-block;
+            background-color: #f3f4f6; /* gray-100 */
+            color: #374151; /* gray-700 - Default text color for better contrast */
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb; /* gray-200 */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            width: 100%; /* Make labels take full width of their grid cell */
+            text-align: left;
+        }
+        .custom-radio input[type="radio"]:checked + label,
+        .custom-checkbox input[type="checkbox"]:checked + label {
+            background-color: #bfdbfe; /* blue-200 */
+            border-color: #3b82f6; /* blue-500 */
+            color: #1e40af; /* blue-800 - Text color when checked */
+        }
+        .custom-radio input[type="radio"]:focus + label,
+        .custom-checkbox input[type="checkbox"]:focus + label {
+            box-shadow: 0 0 0 2px #93c5fd; /* blue-300 */
+        }
+        .result-card {
+            border: 1px solid;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .result-low {
+            background-color: #dcfce7; /* green-100 */
+            border-color: #22c55e; /* green-500 */
+            color: #15803d; /* green-700 */
+        }
+        .result-medium {
+            background-color: #fef9c3; /* yellow-100 */
+            border-color: #facc15; /* yellow-500 */
+            color: #a16207; /* yellow-700 */
+        }
+        .result-high {
+            background-color: #fee2e2; /* red-100 */
+            border-color: #ef4444; /* red-500 */
+            color: #b91c1c; /* red-700 */
+        }
+        .result-very-high {
+            background-color: #fecaca; /* red-200 */
+            border-color: #dc2626; /* red-600 */
+            color: #991b1b; /* red-800 */
+        }
+        .info-icon {
+            cursor: help;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: #333;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            width: 200px;
+            bottom: 125%; /* Position above the icon */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .tooltip::after { /* Arrow */
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        .info-icon-container:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .hidden-questions {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .action-steps-card {
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #374151; /* gray-700 */
+        }
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-slate-700 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 selection:bg-blue-500 selection:text-white">
+
+    <div class="bg-slate-800 shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-2xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+                <i class="fas fa-shield-alt mr-2"></i>BU-Risiko Kurz-Check
+            </h1>
+            <p class="text-gray-400">Ermitteln Sie in wenigen Schritten Ihr persönliches Berufsunfähigkeitsrisiko.</p>
+        </header>
+
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <form id="buForm">
+            <div class="step active" id="step1">
+                <h2 class="text-2xl font-semibold mb-4 text-emerald-400">Willkommen!</h2>
+                <p class="mb-6 text-gray-300">Dieser Kurz-Check hilft Ihnen, ein erstes Gefühl für Ihr persönliches Berufsunfähigkeitsrisiko und mögliche finanzielle Auswirkungen zu bekommen. Die Berechnung ist eine Schätzung und ersetzt keine individuelle Beratung.</p>
+                <p class="mb-6 text-gray-300">Planen Sie ca. 5-7 Minuten ein.</p>
+                <button type="button" onclick="nextStep(1)" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out">
+                    Check starten <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+
+            <div class="step" id="step2">
+                <h2 class="text-2xl font-semibold mb-6 text-emerald-400">1. Berufliche Situation</h2>
+                <div class="mb-6">
+                    <label for="berufsgruppe" class="block text-sm font-medium text-gray-300 mb-2">Ihre hauptsächliche Berufsgruppe:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 custom-radio">
+                        <div><input type="radio" name="berufsgruppe" id="bg_buero_verwaltung" value="buero_verwaltung" required><label for="bg_buero_verwaltung"><i class="fas fa-briefcase mr-2"></i>Büro & Verwaltung</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_it_technik" value="it_technik"><label for="bg_it_technik"><i class="fas fa-laptop-code mr-2"></i>IT, Technik & Ingenieurwesen</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_bildung_soziales" value="bildung_soziales"><label for="bg_bildung_soziales"><i class="fas fa-graduation-cap mr-2"></i>Bildung & Soziales</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_medizin_pflege" value="medizin_pflege"><label for="bg_medizin_pflege"><i class="fas fa-user-md mr-2"></i>Medizin & Pflege</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_handel_verkauf" value="handel_verkauf"><label for="bg_handel_verkauf"><i class="fas fa-store mr-2"></i>Handel & Verkauf</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_handwerk_produktion" value="handwerk_produktion"><label for="bg_handwerk_produktion"><i class="fas fa-hard-hat mr-2"></i>Handwerk & Produktion</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_fahrer_logistik" value="fahrer_logistik"><label for="bg_fahrer_logistik"><i class="fas fa-truck mr-2"></i>Fahrer & Logistik</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_gastronomie_hotel" value="gastronomie_hotel"><label for="bg_gastronomie_hotel"><i class="fas fa-utensils mr-2"></i>Gastronomie & Hotel</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_management" value="management"><label for="bg_management"><i class="fas fa-user-tie mr-2"></i>Führungskräfte & Management</label></div>
+                        <div><input type="radio" name="berufsgruppe" id="bg_koerperlich_gefaehrlich" value="koerperlich_gefaehrlich"><label for="bg_koerperlich_gefaehrlich"><i class="fas fa-tools mr-2"></i>Stark körperliche & gefährliche Berufe</label></div>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Typische Tätigkeiten (max. 3 auswählen):</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 custom-checkbox">
+                        <div><input type="checkbox" name="taetigkeit" id="t_sitzend" value="sitzend"><label for="t_sitzend"><i class="fas fa-chair mr-2"></i>Überw. sitzend</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_stehen" value="stehen"><label for="t_stehen"><i class="fas fa-male mr-2"></i>Viel Stehen/Gehen</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_heben" value="heben"><label for="t_heben"><i class="fas fa-dumbbell mr-2"></i>Heben/Tragen (>10kg)</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_feinmotorik" value="feinmotorik"><label for="t_feinmotorik"><i class="fas fa-pencil-ruler mr-2"></i>Feinmotorik</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_bildschirm" value="bildschirm"><label for="t_bildschirm"><i class="fas fa-desktop mr-2"></i>Bildschirmarbeit</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_reisen" value="reisen"><label for="t_reisen"><i class="fas fa-plane-departure mr-2"></i>Häufige Reisen</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_schicht" value="schicht"><label for="t_schicht"><i class="fas fa-moon mr-2"></i>Schichtarbeit</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_stress" value="stress"><label for="t_stress"><i class="fas fa-brain mr-2"></i>Hoher Stress</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_gefahrstoffe" value="gefahrstoffe"><label for="t_gefahrstoffe"><i class="fas fa-biohazard mr-2"></i>Gefahrstoffe</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_laerm" value="laerm"><label for="t_laerm"><i class="fas fa-volume-up mr-2"></i>Lärmbelästigung</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_emotional" value="emotional"><label for="t_emotional"><i class="fas fa-comments mr-2"></i>Emotionale Belastung</label></div>
+                        <div><input type="checkbox" name="taetigkeit" id="t_monoton" value="monoton"><label for="t_monoton"><i class="fas fa-redo-alt mr-2"></i>Monotone Tätigkeiten</label></div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="nettoeinkommen" class="block text-sm font-medium text-gray-300 mb-2">Ihr aktuelles monatliches Nettoeinkommen (ca.):</label>
+                    <div class="flex items-center">
+                        <input type="number" name="nettoeinkommen" id="nettoeinkommen" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-2" placeholder="z.B. 2500" required min="0">
+                        <span class="text-gray-400">€</span>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="prevStep(2)" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                        <i class="fas fa-arrow-left mr-2"></i> Zurück
+                    </button>
+                    <button type="button" onclick="nextStep(2)" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                        Weiter <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="step" id="step3">
+                <h2 class="text-2xl font-semibold mb-6 text-emerald-400">2. Gesundheit & Lebensstil</h2>
+                <div class="mb-6">
+                    <label for="alter" class="block text-sm font-medium text-gray-300 mb-2">Ihr Alter:</label>
+                    <input type="number" name="alter" id="alter" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="z.B. 35" required min="16" max="70">
+                </div>
+                 <div class="mb-6">
+                    <label for="koerperliche_verfassung" class="block text-sm font-medium text-gray-300 mb-2">Ihre körperliche Verfassung (Gewichtseinschätzung):</label>
+                    <select name="koerperliche_verfassung" id="koerperliche_verfassung" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                        <option value="" disabled selected>Bitte auswählen</option>
+                        <option value="untergewicht">Untergewichtig</option>
+                        <option value="normalgewicht">Normalgewichtig</option>
+                        <option value="uebergewicht">Leicht übergewichtig</option>
+                        <option value="stark_uebergewicht">Stark übergewichtig / Adipös</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label for="gesundheitszustand" class="block text-sm font-medium text-gray-300 mb-2">Wie schätzen Sie Ihren allgemeinen Gesundheitszustand ein?</label>
+                    <select name="gesundheitszustand" id="gesundheitszustand" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                        <option value="" disabled selected>Bitte auswählen</option>
+                        <option value="1">Sehr gut</option>
+                        <option value="2">Gut</option>
+                        <option value="3">Mittelmäßig</option>
+                        <option value="4">Weniger gut</option>
+                        <option value="5">Schlecht</option>
+                    </select>
+                </div>
+                <div class="mb-6 custom-radio">
+                    <p class="block text-sm font-medium text-gray-300 mb-2">Leiden Sie aktuell an chronischen Beschwerden oder Erkrankungen?
+                        <span class="info-icon-container relative inline-block">
+                            <i class="fas fa-info-circle text-blue-400 ml-1 info-icon"></i>
+                            <span class="tooltip">z.B. regelmäßige starke Rückenschmerzen, diagnostizierte psychische Erkrankungen, Herz-Kreislauf-Probleme, Diabetes etc.</span>
+                        </span>
+                    </p>
+                    <input type="radio" name="chronische_beschwerden" id="cb_ja" value="ja" required><label for="cb_ja">Ja</label>
+                    <input type="radio" name="chronische_beschwerden" id="cb_nein" value="nein"><label for="cb_nein">Nein</label>
+                </div>
+
+                <div id="chronische_beschwerden_details" class="hidden-questions">
+                    <p class="block text-sm font-medium text-gray-300 mb-3">Details zu Ihren chronischen Beschwerden:</p>
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-400 mb-2">Welche Bereiche sind hauptsächlich betroffen? (Mehrfachauswahl möglich)</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 custom-checkbox">
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_bewegung" value="bewegung"><label for="ba_bewegung">Bewegungsapparat (Rücken, Gelenke etc.)</label></div>
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_psyche" value="psyche"><label for="ba_psyche">Psyche (Stress, Burnout, Depression)</label></div>
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_herz" value="herz"><label for="ba_herz">Herz-Kreislauf</label></div>
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_stoffwechsel" value="stoffwechsel"><label for="ba_stoffwechsel">Stoffwechsel (z.B. Diabetes)</label></div>
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_atemwege" value="atemwege"><label for="ba_atemwege">Atemwege</label></div>
+                            <div><input type="checkbox" name="beschwerde_art" id="ba_sonstiges" value="sonstiges"><label for="ba_sonstiges">Sonstige Bereiche</label></div>
+                        </div>
+                    </div>
+                    <div class="custom-radio">
+                        <p class="block text-xs font-medium text-gray-400 mb-2">Sind Sie deswegen aktuell in ärztlicher Behandlung oder waren Sie deswegen in den letzten 2 Jahren arbeitsunfähig?</p>
+                        <input type="radio" name="cb_behandlung_au" id="cb_behandlung_au_ja" value="ja"><label for="cb_behandlung_au_ja">Ja</label>
+                        <input type="radio" name="cb_behandlung_au" id="cb_behandlung_au_nein" value="nein"><label for="cb_behandlung_au_nein">Nein</label>
+                    </div>
+                </div>
+
+                <div class="mb-4 custom-radio mt-6">
+                    <p class="block text-sm font-medium text-gray-300 mb-2">Rauchen Sie?</p>
+                    <input type="radio" name="rauchen" id="r_ja" value="ja" required><label for="r_ja">Ja</label>
+                    <input type="radio" name="rauchen" id="r_nein" value="nein"><label for="r_nein">Nein</label>
+                </div>
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="prevStep(3)" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                        <i class="fas fa-arrow-left mr-2"></i> Zurück
+                    </button>
+                    <button type="button" onclick="nextStep(3)" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                        Weiter <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="step" id="step4">
+                <h2 class="text-2xl font-semibold mb-6 text-emerald-400">3. Bestehende Absicherung</h2>
+                <div class="mb-6 custom-radio">
+                    <p class="block text-sm font-medium text-gray-300 mb-2">Haben Sie bereits eine private Berufsunfähigkeitsversicherung?</p>
+                    <input type="radio" name="private_bu" id="bu_ja" value="ja" required><label for="bu_ja">Ja</label>
+                    <input type="radio" name="private_bu" id="bu_nein" value="nein"><label for="bu_nein">Nein</label>
+                </div>
+                <div id="bu_rente_input_container" class="mb-4 hidden">
+                    <label for="bu_rente" class="block text-sm font-medium text-gray-300 mb-2">Wenn ja, wie hoch ist die versicherte monatliche BU-Rente (ca.)?</label>
+                     <div class="flex items-center">
+                        <input type="number" name="bu_rente" id="bu_rente" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mr-2" placeholder="z.B. 1500" min="0">
+                        <span class="text-gray-400">€</span>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="prevStep(4)" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                        <i class="fas fa-arrow-left mr-2"></i> Zurück
+                    </button>
+                    <button type="button" onclick="calculateRisk()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out">
+                        Ergebnis anzeigen <i class="fas fa-calculator ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div class="step" id="step5">
+            <h2 class="text-2xl font-semibold mb-2 text-emerald-400">Ihr persönliches BU-Risiko Profil</h2>
+            <p class="text-gray-400 mb-6">Basierend auf Ihren Angaben ergibt sich folgende Einschätzung:</p>
+
+            <div id="risikoScoreDisplay" class="result-card mb-6">
+                <h3 class="text-xl font-semibold mb-2">Risikoeinschätzung:</h3>
+                <p class="text-lg" id="risikoText">Ihr Risiko wird berechnet...</p>
+                <div class="w-full bg-gray-200 rounded-full h-6 mt-2 dark:bg-gray-700">
+                    <div id="risikoBalken" class="h-6 rounded-full text-xs font-medium text-blue-100 text-center p-1 leading-none" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <div id="versorgungslueckeDisplay" class="result-card mb-6 bg-slate-700 border-slate-600">
+                <h3 class="text-xl font-semibold mb-2 text-gray-100">Potenzielle Versorgungslücke:</h3>
+                <div class="text-sm text-gray-300 space-y-1 mt-3 mb-3">
+                    <div class="flex justify-between"><span>Ihr Nettoeinkommen:</span> <span id="lueckeNettoeinkommen">€ 0,-</span></div>
+                    <div class="flex justify-between"><span>Abzgl. geschätzter gesetzl. Erwerbsminderungsrente (ca. 25%):</span> <span id="lueckeGesetzlicheRente" class="text-red-400">- € 0,-</span></div>
+                    <div class="flex justify-between"><span>Abzgl. Ihrer privaten BU-Rente:</span> <span id="lueckePrivateBu" class="text-red-400">- € 0,-</span></div>
+                    <hr class="border-slate-600 my-1">
+                    <div class="flex justify-between font-bold"><span>Verbleibende monatliche Versorgungslücke:</span> <span id="lueckeBetrag" class="text-2xl text-red-400">€ 0,-</span></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3"><i class="fas fa-info-circle mr-1"></i> Die tatsächliche Höhe der gesetzlichen Erwerbsminderungsrente ist individuell und hängt von vielen Faktoren ab.</p>
+            </div>
+
+            <div id="inflationHinweis" class="result-card mb-6 bg-amber-700/30 border-amber-600">
+                 <h3 class="text-xl font-semibold mb-2 text-amber-300"><i class="fas fa-chart-line mr-2"></i>Wichtig: Inflation beachten!</h3>
+                 <p class="text-sm text-gray-300">Bedenken Sie, dass Ihre Versorgungslücke und eine eventuell benötigte BU-Rente durch die Inflation über die Jahre an Kaufkraft verlieren. Eine heute als ausreichend empfundene Rente kann in 20 Jahren deutlich weniger wert sein. Planen Sie Ihre Absicherung vorausschauend und berücksichtigen Sie eine mögliche Leistungsdynamik.</p>
+                 <p class="text-xs text-gray-400 mt-2">Beispiel: 1.500 € Rente heute haben bei 2% Inflation in 20 Jahren nur noch eine Kaufkraft von ca. 1.009 €.</p>
+            </div>
+            
+            <div id="berufsgruppenUrsachen" class="bg-sky-900/70 p-6 rounded-lg shadow-lg mt-6 border border-sky-700">
+                <h3 class="text-xl font-semibold text-sky-300 mb-3"><i class="fas fa-notes-medical mr-2"></i>Häufige BU-Ursachen in Ihrer Berufsgruppe</h3>
+                <ul id="ursachenListe" class="list-disc list-inside text-gray-300 space-y-1 text-sm">
+                    </ul>
+            </div>
+
+            <div class="bg-blue-900/50 p-6 rounded-lg shadow-lg mt-6 border border-blue-700">
+                <h3 class="text-xl font-semibold text-blue-300 mb-3"><i class="fas fa-lightbulb mr-2"></i>Wussten Sie schon? (Allgemein)</h3>
+                <ul class="list-disc list-inside text-gray-300 space-y-1 text-sm">
+                    <li>Etwa jeder 4. Arbeitnehmer wird im Laufe seines Berufslebens berufsunfähig.</li>
+                    <li>Die häufigsten Ursachen (allgemein) sind psychische Erkrankungen und Erkrankungen des Skelett- und Bewegungsapparates.</li>
+                    <li>Die gesetzliche Erwerbsminderungsrente reicht oft nicht aus, um den Lebensstandard zu halten.</li>
+                </ul>
+            </div>
+
+            <div id="actionSteps" class="result-card action-steps-card mt-6">
+                <h3 class="text-xl font-semibold text-emerald-400 mb-3"><i class="fas fa-arrow-alt-circle-right mr-2"></i>Was nun? Ihre nächsten Schritte:</h3>
+                <ol class="list-decimal list-inside text-gray-300 space-y-3 text-sm">
+                    <li>
+                        <strong>Sprechen Sie mit Ihrem Vermögensberater der Deutschen Vermögensberatung:</strong> Dieser Check gibt eine erste Orientierung. Für eine passgenaue Absicherung und detaillierte Informationen zu Ihrer individuellen Situation ist ein persönliches Gespräch mit Ihrem Berater unerlässlich. Er kann Ihnen maßgeschneiderte Lösungen aufzeigen.
+                        <button type="button" onclick="showContactModal()" class="mt-1 ml-4 text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-3 rounded-md transition duration-150 ease-in-out">
+                            <i class="fas fa-calendar-check mr-1"></i> Kontakt zu Ihrem Berater anfragen
+                        </button>
+                    </li>
+                    <li>
+                        <strong>Bereiten Sie sich auf das Gespräch vor (optional):</strong>
+                        <ul class="list-disc list-inside ml-6 mt-1 space-y-1 text-xs text-gray-400">
+                            <li>Notieren Sie sich Fragen, die sich aus diesem Check ergeben haben.</li>
+                            <li>Halten Sie ggf. aktuelle Gehaltsnachweise bereit.</li>
+                            <li>Verschaffen Sie sich einen Überblick über Ihre Fixkosten.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+
+
+            <div class="mt-8 text-center">
+                 <button type="button" onclick="restartCheck()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                    <i class="fas fa-redo mr-2"></i> Erneut prüfen
+                </button>
+            </div>
+
+            <p class="text-xs text-gray-500 mt-10 text-center">
+                <strong>Disclaimer:</strong> Diese Einschätzung dient einer ersten Orientierung und als Diskussionsgrundlage für ein Gespräch mit Ihrem Vermögensberater der Deutschen Vermögensberatung. Sie ersetzt keine detaillierte, individuelle Beratung und Risikoprüfung. Die Berechnungen basieren auf vereinfachten Annahmen.
+            </p>
+        </div>
+    </div>
+
+    <div id="contactModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 p-8 rounded-lg shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-semibold text-emerald-400 mb-6">Kontaktanfrage an Ihren Vermögensberater</h2>
+            <p class="text-gray-300 mb-4">Vielen Dank für Ihr Interesse! Bitte hinterlassen Sie Ihre Kontaktdaten. Ihr persönlicher Vermögensberater der Deutschen Vermögensberatung wird sich umgehend bei Ihnen melden.</p>
+            <form id="contactForm">
+                <div class="mb-4">
+                    <label for="modalName" class="block text-sm font-medium text-gray-300 mb-1">Name:</label>
+                    <input type="text" id="modalName" name="modalName" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                </div>
+                <div class="mb-4">
+                    <label for="modalEmail" class="block text-sm font-medium text-gray-300 mb-1">E-Mail:</label>
+                    <input type="email" id="modalEmail" name="modalEmail" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+                </div>
+                <div class="mb-6">
+                    <label for="modalPhone" class="block text-sm font-medium text-gray-300 mb-1">Telefon (optional):</label>
+                    <input type="tel" id="modalPhone" name="modalPhone" class="bg-slate-700 border border-slate-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="hideContactModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg">Abbrechen</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Senden</button>
+                </div>
+            </form>
+        </div>
+    </div>
+     <div id="customAlertModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[100] hidden">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-2xl w-full max-w-sm text-center">
+            <p id="customAlertMessage" class="text-gray-100 mb-6"></p>
+            <button type="button" onclick="hideCustomAlert()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg">OK</button>
+        </div>
+    </div>
+
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 5; // Inklusive Intro und Ergebnis
+
+        const buUrsachenProBerufsgruppe = {
+            buero_verwaltung: ["Psychische Erkrankungen (Stress, Burnout)", "Erkrankungen des Skelett- und Bewegungsapparates (Rücken, Nacken durch Sitzen)", "Augenleiden durch Bildschirmarbeit"],
+            it_technik: ["Psychische Erkrankungen (Stress, Termindruck)", "Erkrankungen des Skelett- und Bewegungsapparates (RSI-Syndrom, Rücken)", "Augenleiden"],
+            bildung_soziales: ["Psychische Erkrankungen (hohe emotionale Belastung, Stress)", "Stimmprobleme (bei Lehrkräften)", "Infektionskrankheiten"],
+            medizin_pflege: ["Erkrankungen des Skelett- und Bewegungsapparates (Heben, Tragen)", "Psychische Erkrankungen (Stress, Schichtarbeit, emotionale Belastung)", "Infektionskrankheiten"],
+            handel_verkauf: ["Erkrankungen des Skelett- und Bewegungsapparates (langes Stehen, Heben)", "Psychische Erkrankungen (Kundenkontakt, Stress)", "Herz-Kreislauf-Erkrankungen"],
+            handwerk_produktion: ["Erkrankungen des Skelett- und Bewegungsapparates (schwere körperliche Arbeit, Unfälle)", "Unfälle", "Lärmschwerhörigkeit", "Atemwegserkrankungen (Stäube)"],
+            fahrer_logistik: ["Erkrankungen des Skelett- und Bewegungsapparates (langes Sitzen, Vibrationen, Heben)", "Unfälle im Straßenverkehr", "Herz-Kreislauf-Erkrankungen", "Psychische Belastungen (Stress, unregelmäßige Zeiten)"],
+            gastronomie_hotel: ["Erkrankungen des Skelett- und Bewegungsapparates (langes Stehen, Heben, Tragen)", "Psychische Erkrankungen (Stress, unregelmäßige Arbeitszeiten)", "Hauterkrankungen"],
+            management: ["Psychische Erkrankungen (hoher Stress, Verantwortung, Burnout)", "Herz-Kreislauf-Erkrankungen", "Erkrankungen des Skelett- und Bewegungsapparates (Sitzen, Reisen)"],
+            koerperlich_gefaehrlich: ["Unfälle", "Erkrankungen des Skelett- und Bewegungsapparates (extreme Belastungen)", "Berufskrankheiten durch Gefahrstoffe oder Lärm"],
+            default: ["Psychische Erkrankungen", "Erkrankungen des Skelett- und Bewegungsapparates", "Sonstige Erkrankungen (z.B. Krebs, Herz-Kreislauf)"]
+        };
+
+        // Custom Alert Function
+        function customAlert(message) {
+            document.getElementById('customAlertMessage').textContent = message;
+            document.getElementById('customAlertModal').classList.remove('hidden');
+        }
+
+        function hideCustomAlert() {
+            document.getElementById('customAlertModal').classList.add('hidden');
+        }
+
+
+        function updateProgressBar() {
+            const progress = ((currentStep -1) / (totalSteps - 1)) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function validateStep2() {
+            if (!document.querySelector('input[name="berufsgruppe"]:checked')) {
+                customAlert('Bitte wählen Sie Ihre Berufsgruppe aus.'); return false;
+            }
+            const taetigkeiten = document.querySelectorAll('input[name="taetigkeit"]:checked').length;
+            if (taetigkeiten === 0) {
+                customAlert('Bitte wählen Sie mindestens eine typische Tätigkeit aus.'); return false;
+            }
+            const nettoeinkommenInput = document.getElementById('nettoeinkommen');
+            if (!nettoeinkommenInput.value || parseFloat(nettoeinkommenInput.value) < 0) {
+                customAlert('Bitte geben Sie ein gültiges Nettoeinkommen ein.'); return false;
+            }
+            return true;
+        }
+
+        function validateStep3() {
+            const alterInput = document.getElementById('alter');
+            if (!alterInput.value || parseInt(alterInput.value) < 16 || parseInt(alterInput.value) > 70) {
+                customAlert('Bitte geben Sie ein gültiges Alter (zwischen 16 und 70) ein.'); return false;
+            }
+            if (!document.getElementById('koerperliche_verfassung').value) {
+                customAlert('Bitte wählen Sie Ihre körperliche Verfassung aus.'); return false;
+            }
+            if (!document.getElementById('gesundheitszustand').value) {
+                customAlert('Bitte schätzen Sie Ihren Gesundheitszustand ein.'); return false;
+            }
+            const chronischeBeschwerden = document.querySelector('input[name="chronische_beschwerden"]:checked');
+            if (!chronischeBeschwerden) {
+                customAlert('Bitte geben Sie an, ob chronische Beschwerden vorliegen.'); return false;
+            }
+            if (chronischeBeschwerden.value === 'ja') {
+                if (document.querySelectorAll('input[name="beschwerde_art"]:checked').length === 0) {
+                    customAlert('Bitte wählen Sie mindestens einen betroffenen Bereich Ihrer chronischen Beschwerden aus.'); return false;
+                }
+                if (!document.querySelector('input[name="cb_behandlung_au"]:checked')) {
+                    customAlert('Bitte geben Sie an, ob Sie wegen Ihrer chronischen Beschwerden in Behandlung sind oder arbeitsunfähig waren.'); return false;
+                }
+            }
+            if (!document.querySelector('input[name="rauchen"]:checked')) {
+                customAlert('Bitte geben Sie an, ob Sie rauchen.'); return false;
+            }
+            return true;
+        }
+        
+        function validateStep4() {
+             const privateBu = document.querySelector('input[name="private_bu"]:checked');
+            if (!privateBu) {
+                customAlert('Bitte geben Sie an, ob eine private BU-Versicherung besteht.'); return false;
+            }
+            const buRenteInput = document.getElementById('bu_rente');
+            if (privateBu.value === 'ja' && (!buRenteInput.value || parseFloat(buRenteInput.value) < 0)) {
+                 customAlert('Bitte geben Sie eine gültige Höhe Ihrer privaten BU-Rente an.'); return false;
+            }
+            return true;
+        }
+
+
+        function nextStep(step) {
+            let isValid = true;
+            if (step === 2) isValid = validateStep2();
+            if (step === 3) isValid = validateStep3();
+
+            if (!isValid) return;
+
+            if (currentStep < totalSteps) {
+                document.getElementById('step' + currentStep).classList.remove('active');
+                currentStep++;
+                document.getElementById('step' + currentStep).classList.add('active');
+                updateProgressBar();
+            }
+        }
+
+        function prevStep(step) {
+            if (currentStep > 1) {
+                document.getElementById('step' + currentStep).classList.remove('active');
+                currentStep--;
+                document.getElementById('step' + currentStep).classList.add('active');
+                updateProgressBar();
+            }
+        }
+        
+        document.querySelectorAll('input[name="private_bu"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const buRenteContainer = document.getElementById('bu_rente_input_container');
+                const buRenteInput = document.getElementById('bu_rente');
+                if (this.value === 'ja') {
+                    buRenteContainer.classList.remove('hidden');
+                    buRenteInput.required = true;
+                } else {
+                    buRenteContainer.classList.add('hidden');
+                    buRenteInput.required = false;
+                    buRenteInput.value = ''; 
+                }
+            });
+        });
+
+        document.querySelectorAll('input[name="chronische_beschwerden"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const detailsDiv = document.getElementById('chronische_beschwerden_details');
+                if (this.value === 'ja') {
+                    detailsDiv.style.display = 'block';
+                } else {
+                    detailsDiv.style.display = 'none';
+                    detailsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    detailsDiv.querySelectorAll('input[type="radio"]').forEach(rb => rb.checked = false);
+                }
+            });
+        });
+
+        function calculateRisk() {
+            if (!validateStep4()) return; 
+            
+            let riskScore = 0;
+            const berufsgruppeElement = document.querySelector('input[name="berufsgruppe"]:checked');
+            const berufsgruppe = berufsgruppeElement ? berufsgruppeElement.value : 'default';
+
+
+            switch(berufsgruppe) {
+                case 'buero_verwaltung': riskScore += 5; break;
+                case 'it_technik': riskScore += 7; break; 
+                case 'bildung_soziales': riskScore += 12; break;
+                case 'medizin_pflege': riskScore += 22; break; 
+                case 'handel_verkauf': riskScore += 10; break;
+                case 'handwerk_produktion': riskScore += 20; break;
+                case 'fahrer_logistik': riskScore += 25; break;
+                case 'gastronomie_hotel': riskScore += 18; break;
+                case 'management': riskScore += 10; break; 
+                case 'koerperlich_gefaehrlich': riskScore += 30; break;
+                default: riskScore += 10; 
+            }
+            
+            const taetigkeitenGewaehlt = document.querySelectorAll('input[name="taetigkeit"]:checked');
+            let activityScoreContribution = 0;
+            taetigkeitenGewaehlt.forEach(t => {
+                switch(t.value) {
+                    case 'sitzend': activityScoreContribution += 2; break;
+                    case 'stehen': activityScoreContribution += 3; break;
+                    case 'heben': activityScoreContribution += 5; break;
+                    case 'feinmotorik': activityScoreContribution += 3; break;
+                    case 'bildschirm': activityScoreContribution += 4; break;
+                    case 'reisen': activityScoreContribution += 4; break;
+                    case 'schicht': activityScoreContribution += 5; break;
+                    case 'stress': activityScoreContribution += 6; break; 
+                    case 'gefahrstoffe': activityScoreContribution += 7; break;
+                    case 'laerm': activityScoreContribution += 4; break;
+                    case 'emotional': activityScoreContribution += 5; break;
+                    case 'monoton': activityScoreContribution += 3; break;
+                }
+            });
+             riskScore += Math.min(activityScoreContribution, 15);
+
+            const alter = parseInt(document.getElementById('alter').value);
+            if (alter >= 30 && alter < 40) riskScore += 3;
+            else if (alter >= 40 && alter < 50) riskScore += 7;
+            else if (alter >= 50 && alter < 60) riskScore += 12;
+            else if (alter >= 60) riskScore += 18;
+
+            const verfassung = document.getElementById('koerperliche_verfassung').value;
+            if (verfassung === 'uebergewicht') riskScore += 5;
+            else if (verfassung === 'stark_uebergewicht') riskScore += 10;
+            else if (verfassung === 'untergewicht') riskScore += 3; 
+
+            const gesundheit = parseInt(document.getElementById('gesundheitszustand').value);
+            if (gesundheit === 2) riskScore += 2; 
+            else if (gesundheit === 3) riskScore += 6; 
+            else if (gesundheit === 4) riskScore += 10; 
+            else if (gesundheit === 5) riskScore += 18; 
+
+            if (document.querySelector('input[name="chronische_beschwerden"]:checked')?.value === 'ja') {
+                riskScore += 10; 
+                document.querySelectorAll('input[name="beschwerde_art"]:checked').forEach(art => {
+                    if (art.value === 'psyche') riskScore += 8; 
+                    else if (art.value === 'bewegung') riskScore += 5;
+                    else if (art.value === 'herz') riskScore += 6;
+                    else riskScore += 3; 
+                });
+                if (document.querySelector('input[name="cb_behandlung_au"]:checked')?.value === 'ja') {
+                    riskScore += 7; 
+                }
+            }
+
+            if (document.querySelector('input[name="rauchen"]:checked').value === 'ja') {
+                riskScore += 8; 
+            }
+
+            const risikoTextElement = document.getElementById('risikoText');
+            const risikoBalkenElement = document.getElementById('risikoBalken');
+            const risikoScoreDisplayElement = document.getElementById('risikoScoreDisplay');
+            
+            risikoScoreDisplayElement.classList.remove('result-low', 'result-medium', 'result-high', 'result-very-high');
+            risikoBalkenElement.classList.remove('bg-green-500', 'bg-yellow-400', 'bg-orange-500', 'bg-red-500');
+
+            let risikoLevelText = "";
+            const maxPracticalScore = 100; 
+            let balkenPercent = (riskScore / maxPracticalScore) * 100;
+            balkenPercent = Math.min(balkenPercent, 100); 
+            balkenPercent = Math.max(balkenPercent, 5); 
+
+            if (riskScore <= 25) { 
+                risikoLevelText = "Niedrig";
+                risikoScoreDisplayElement.classList.add('result-low');
+                risikoBalkenElement.classList.add('bg-green-500');
+            } else if (riskScore <= 45) { 
+                risikoLevelText = "Mittel";
+                risikoScoreDisplayElement.classList.add('result-medium');
+                risikoBalkenElement.classList.add('bg-yellow-400'); 
+            } else if (riskScore <= 65) { 
+                risikoLevelText = "Erhöht";
+                risikoScoreDisplayElement.classList.add('result-high');
+                risikoBalkenElement.classList.add('bg-orange-500'); 
+            } else {
+                risikoLevelText = "Hoch";
+                risikoScoreDisplayElement.classList.add('result-very-high');
+                risikoBalkenElement.classList.add('bg-red-500');
+            }
+            risikoTextElement.textContent = `Ihr geschätztes Risiko ist: ${risikoLevelText} (Score: ${riskScore})`;
+            risikoBalkenElement.style.width = balkenPercent + '%';
+            risikoBalkenElement.textContent = Math.round(balkenPercent) + '%';
+
+            const nettoeinkommen = parseFloat(document.getElementById('nettoeinkommen').value) || 0;
+            const privateBuRenteValue = document.getElementById('bu_rente').value;
+            const privateBuRente = document.querySelector('input[name="private_bu"]:checked').value === 'ja' && privateBuRenteValue ? parseFloat(privateBuRenteValue) : 0;
+            const geschaetzteGesetzlicheRente = nettoeinkommen * 0.25; 
+            const versorgungsluecke = nettoeinkommen - geschaetzteGesetzlicheRente - privateBuRente;
+            
+            // Update detailed financial gap display
+            document.getElementById('lueckeNettoeinkommen').textContent = `€ ${nettoeinkommen.toFixed(2).replace('.', ',')}`;
+            document.getElementById('lueckeGesetzlicheRente').textContent = `- € ${geschaetzteGesetzlicheRente.toFixed(2).replace('.', ',')}`;
+            document.getElementById('lueckePrivateBu').textContent = `- € ${privateBuRente.toFixed(2).replace('.', ',')}`;
+            document.getElementById('lueckeBetrag').textContent = `€ ${Math.max(0, versorgungsluecke).toFixed(2).replace('.', ',')}`;
+
+
+            const ursachenListeElement = document.getElementById('ursachenListe');
+            ursachenListeElement.innerHTML = ''; 
+            const spezifischeUrsachen = buUrsachenProBerufsgruppe[berufsgruppe] || buUrsachenProBerufsgruppe.default;
+            spezifischeUrsachen.forEach(ursache => {
+                const listItem = document.createElement('li');
+                listItem.textContent = ursache;
+                ursachenListeElement.appendChild(listItem);
+            });
+
+            if (currentStep < totalSteps) {
+                 document.getElementById('step' + currentStep).classList.remove('active');
+                currentStep++;
+                document.getElementById('step' + currentStep).classList.add('active');
+                updateProgressBar();
+            }
+        }
+        
+        function restartCheck() {
+            document.getElementById('buForm').reset();
+            document.getElementById('bu_rente_input_container').classList.add('hidden');
+            document.getElementById('bu_rente').required = false;
+            document.getElementById('chronische_beschwerden_details').style.display = 'none';
+            
+            document.getElementById('step' + currentStep).classList.remove('active');
+            currentStep = 1;
+            document.getElementById('step' + currentStep).classList.add('active');
+            updateProgressBar();
+        }
+        
+        function showContactModal() {
+            document.getElementById('contactModal').classList.remove('hidden');
+        }
+
+        function hideContactModal() {
+            document.getElementById('contactModal').classList.add('hidden');
+            document.getElementById('contactForm').reset(); 
+        }
+
+        document.getElementById('contactForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const name = document.getElementById('modalName').value;
+            hideContactModal();
+            customAlert(`Vielen Dank, ${name}! Ihre Anfrage wurde gesendet. Ihr Vermögensberater wird sich bei Ihnen melden.`);
+        });
+
+
+        // Initialize
+        document.getElementById('step1').classList.add('active');
+        updateProgressBar();
+
+    </script>
+</body>
+</html>
