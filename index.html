@@ -677,6 +677,7 @@
             const geschaetzteGesetzlicheRente = nettoeinkommen * 0.25; 
             const versorgungsluecke = nettoeinkommen - geschaetzteGesetzlicheRente - privateBuRente;
             
+            // Update detailed financial gap display
             document.getElementById('lueckeNettoeinkommen').textContent = `€ ${nettoeinkommen.toFixed(2).replace('.', ',')}`;
             document.getElementById('lueckeGesetzlicheRente').textContent = `- € ${geschaetzteGesetzlicheRente.toFixed(2).replace('.', ',')}`;
             document.getElementById('lueckePrivateBu').textContent = `- € ${privateBuRente.toFixed(2).replace('.', ',')}`;
@@ -700,16 +701,76 @@
             }
         }
         
-        document.getElementById('contactForm').addEventListener('submit', function(event) {
+       document.getElementById('contactForm').addEventListener('submit', function(event) {
             event.preventDefault(); // Verhindert das Standard-Absenden des Formulars
 
-            const form = event.target;
-            const formData = new FormData(form);
+            const form = event.target; // Das Kontaktformular selbst
+            const formData = new FormData(form); // Sammelt die Kontaktdaten (Name, Email, Phone)
             const submitButton = form.querySelector('button[type="submit"]');
             const originalButtonText = submitButton.innerHTML;
             
             submitButton.disabled = true;
             submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sende...';
+
+            // Daten aus dem Hauptformular (buForm) sammeln und an formData anhängen
+            const berufsgruppeChecked = document.querySelector('input[name="berufsgruppe"]:checked');
+            if (berufsgruppeChecked) {
+                formData.append('Berufsgruppe', berufsgruppeChecked.labels[0].textContent.trim());
+            }
+
+            const taetigkeiten = [];
+            document.querySelectorAll('input[name="taetigkeit"]:checked').forEach(item => {
+                taetigkeiten.push(item.labels[0].textContent.trim());
+            });
+            if (taetigkeiten.length > 0) {
+                formData.append('Typische_Taetigkeiten', taetigkeiten.join(', '));
+            }
+
+            formData.append('Nettoeinkommen', document.getElementById('nettoeinkommen').value + " €");
+            formData.append('Alter', document.getElementById('alter').value);
+            
+            const koerperVerfassungSelect = document.getElementById('koerperliche_verfassung');
+            formData.append('Koerperliche_Verfassung', koerperVerfassungSelect.options[koerperVerfassungSelect.selectedIndex].text);
+
+            const gesundheitszustandSelect = document.getElementById('gesundheitszustand');
+            formData.append('Gesundheitszustand_Einschaetzung', gesundheitszustandSelect.options[gesundheitszustandSelect.selectedIndex].text);
+
+            const chronischJa = document.querySelector('input[name="chronische_beschwerden"]:checked');
+            if (chronischJa) {
+                 formData.append('Chronische_Beschwerden', chronischJa.labels[0].textContent.trim());
+                if (chronischJa.value === 'ja') {
+                    const beschwerdeArten = [];
+                    document.querySelectorAll('input[name="beschwerde_art"]:checked').forEach(item => {
+                        beschwerdeArten.push(item.labels[0].textContent.trim());
+                    });
+                     if (beschwerdeArten.length > 0) {
+                        formData.append('Beschwerde_Art_Details', beschwerdeArten.join(', '));
+                    }
+                    const behandlungAU = document.querySelector('input[name="cb_behandlung_au"]:checked');
+                    if (behandlungAU) {
+                        formData.append('Chronisch_Behandlung_AU', behandlungAU.labels[0].textContent.trim());
+                    }
+                }
+            }
+            
+            const rauchen = document.querySelector('input[name="rauchen"]:checked');
+            if(rauchen) formData.append('Rauchen', rauchen.labels[0].textContent.trim());
+
+            const privateBu = document.querySelector('input[name="private_bu"]:checked');
+            if(privateBu) {
+                formData.append('Private_BU_vorhanden', privateBu.labels[0].textContent.trim());
+                if (privateBu.value === 'ja') {
+                    formData.append('Private_BU_Rente_Hoehe', document.getElementById('bu_rente').value + " €");
+                }
+            }
+
+            // Ergebnisse hinzufügen
+            formData.append('Ergebnis_Risikoeinschaetzung', document.getElementById('risikoText').textContent);
+            formData.append('Ergebnis_Versorgungsluecke_Betrag', document.getElementById('lueckeBetrag').textContent);
+            formData.append('Ergebnis_Luecke_Nettoeinkommen', document.getElementById('lueckeNettoeinkommen').textContent);
+            formData.append('Ergebnis_Luecke_Gesetzliche_Rente', document.getElementById('lueckeGesetzlicheRente').textContent);
+            formData.append('Ergebnis_Luecke_Private_BU', document.getElementById('lueckePrivateBu').textContent);
+
 
             // Deine Formspree Endpoint URL
             const formspreeEndpoint = "https://formspree.io/f/mwpogaan"; 
@@ -729,7 +790,9 @@
                     return response.json(); 
                 } else {
                     return response.json().then(data => {
-                        throw new Error(data.error || "Unbekannter Fehler beim Senden.");
+                        // Formspree sendet manchmal Fehler im {errors: [{message: ...}]} Format
+                        const errorMessage = data.errors && data.errors[0] && data.errors[0].message ? data.errors[0].message : "Unbekannter Fehler beim Senden.";
+                        throw new Error(errorMessage);
                     }).catch(jsonError => {
                         throw new Error(`Server-Fehler: ${response.status} ${response.statusText}`);
                     });
@@ -737,7 +800,7 @@
             })
             .then(data => { 
                 console.log("Formspree success data:", data);
-                const name = formData.get('name') || "Gast";
+                const name = formData.get('name') || "Gast"; // Name aus den Kontaktdaten
                 hideContactModal();
                 form.reset(); 
                 customAlert(`Vielen Dank, ${name}! Ihre Anfrage wurde gesendet. Ihr Vermögensberater wird sich bei Ihnen melden.`);
